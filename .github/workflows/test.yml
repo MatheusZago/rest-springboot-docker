@@ -1,0 +1,16 @@
+name: Test Workflow
+
+on:
+  push:
+    branches:
+      - main  # Ou outra branch que você deseja monitorar
+
+jobs:
+  list-files:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: List files
+        run: ls -R  # Lista todos os arquivos e diretórios recursivamente
