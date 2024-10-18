@@ -98,7 +98,7 @@ public class BookControllerXmlTest extends AbstractIntegrationTest {
         assertTrue(book.getId() > 0);
         assertEquals("Docker Deep Dive", book.getTitle());
         assertEquals("Nigel Poulton", book.getAuthor());
-        assertEquals(55.99, book.getPrice(),0.01);
+        assertEquals(55.99, book.getPrice(), 0.01);
     }
 
     @Test

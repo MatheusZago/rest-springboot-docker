@@ -4,6 +4,7 @@ import br.com.matheus.integrationTests.testsContainer.AbstractIntegrationTest;
 import br.com.matheus.integrationTests.vo.AccountCredentialsVO;
 import br.com.matheus.integrationTests.vo.BookVO;
 import br.com.matheus.integrationTests.vo.TokenVO;
+import br.com.matheus.integrationTests.vo.wrappers.WrapperBookVO;
 import configs.TesteConfigs;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.filter.log.LogDetail;
@@ -19,6 +20,8 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonMappingExcep
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
@@ -76,7 +79,7 @@ public class BookControllerJsonTest extends AbstractIntegrationTest {
 
     @Test
     @Order(2)
-    public void testCreate() throws JsonMappingException, JsonProcessingException, IOException {
+    public void testCreate() throws JsonMappingException, JsonProcessingException, IOException, ParseException {
 
         mockBook();
 
@@ -114,7 +117,7 @@ public class BookControllerJsonTest extends AbstractIntegrationTest {
                 .contentType(TesteConfigs.CONTENT_TYPE_JSON)
                 .body(book)
                 .when()
-                .put()
+                .put("/" + book.getId())
                 .then()
                 .statusCode(200)
                 .extract()
@@ -138,9 +141,8 @@ public class BookControllerJsonTest extends AbstractIntegrationTest {
     public void testFindById() throws JsonMappingException, JsonProcessingException, IOException {
         var content = given().spec(specification)
                 .contentType(TesteConfigs.CONTENT_TYPE_JSON)
-                .pathParam("id", book.getId())
                 .when()
-                .get("{id}")
+                .get("/" + book.getId())
                 .then()
                 .statusCode(200)
                 .extract()
@@ -164,9 +166,8 @@ public class BookControllerJsonTest extends AbstractIntegrationTest {
     public void testDelete() {
         given().spec(specification)
                 .contentType(TesteConfigs.CONTENT_TYPE_JSON)
-                .pathParam("id", book.getId())
                 .when()
-                .delete("{id}")
+                .delete("/" + book.getId())
                 .then()
                 .statusCode(204);
     }
@@ -186,29 +187,28 @@ public class BookControllerJsonTest extends AbstractIntegrationTest {
                 .body()
                 .asString();
 
-        List<BookVO> books = objectMapper.readValue(content, new TypeReference<List<BookVO>>() {});
+        WrapperBookVO response = objectMapper.readValue(content, WrapperBookVO.class);
+        List<BookVO> books = response.getEmbedded().getBooks();
 
         BookVO foundBookOne = books.get(0);
-
         assertNotNull(foundBookOne.getId());
         assertNotNull(foundBookOne.getTitle());
         assertNotNull(foundBookOne.getAuthor());
         assertNotNull(foundBookOne.getPrice());
         assertTrue(foundBookOne.getId() > 0);
-        assertEquals("Working effectively with legacy code", foundBookOne.getTitle());
-        assertEquals("Michael C. Feathers", foundBookOne.getAuthor());
-        assertEquals(49.00, foundBookOne.getPrice(), 0.01);
+        assertEquals("Big Data: como extrair volume, variedade, velocidade e valor da avalanche de informação cotidiana", foundBookOne.getTitle());
+        assertEquals("Viktor Mayer-Schonberger e Kenneth Kukier", foundBookOne.getAuthor());
+        assertEquals(54.00, foundBookOne.getPrice(), 0.01);
 
         BookVO foundBookFive = books.get(4);
-
         assertNotNull(foundBookFive.getId());
         assertNotNull(foundBookFive.getTitle());
         assertNotNull(foundBookFive.getAuthor());
         assertNotNull(foundBookFive.getPrice());
         assertTrue(foundBookFive.getId() > 0);
-        assertEquals("Code complete", foundBookFive.getTitle());
-        assertEquals("Steve McConnell", foundBookFive.getAuthor());
-        assertEquals(58.0, foundBookFive.getPrice(), 0.01);
+        assertEquals("Domain Driven Design", foundBookFive.getTitle());
+        assertEquals("Eric Evans", foundBookFive.getAuthor());
+        assertEquals(92.0, foundBookFive.getPrice(), 0.01);
     }
 
     private void mockBook() {

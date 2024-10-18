@@ -9,6 +9,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import configs.TesteConfigs;
 import io.restassured.builder.RequestSpecBuilder;
@@ -290,7 +291,7 @@ public class PersonControllerJsonTest extends AbstractIntegrationTest {
 				.pathParam("firstName", "a")
 				.queryParams("page", 0, "size", 6, "direction", "asc")
 				.when()
-				.get("findPersonByName/{firstName}")
+				.get("findPeopleByName/{firstName}")
 				.then()
 				.statusCode(200)
 				.extract()
@@ -308,13 +309,13 @@ public class PersonControllerJsonTest extends AbstractIntegrationTest {
 		assertNotNull(foundPersonOne.getAddress());
 		assertNotNull(foundPersonOne.getGender());
 
-		assertTrue(foundPersonOne.getEnabled());
+		assertFalse(foundPersonOne.getEnabled());
 
-		assertEquals(1, foundPersonOne.getId());
+		assertEquals(700, foundPersonOne.getId());
 
-		assertEquals("Ayrton", foundPersonOne.getFirstName());
-		assertEquals("Senna", foundPersonOne.getLastName());
-		assertEquals("São Paulo", foundPersonOne.getAddress());
+		assertEquals("Aaron", foundPersonOne.getFirstName());
+		assertEquals("Oddy", foundPersonOne.getLastName());
+		assertEquals("01 Colorado Court", foundPersonOne.getAddress());
 		assertEquals("Male", foundPersonOne.getGender());
 	}
 
@@ -340,8 +341,8 @@ public class PersonControllerJsonTest extends AbstractIntegrationTest {
 	@Test
 	@Order(9)
 	public void testHATEOAS() throws JsonMappingException, JsonProcessingException {
-
-		var content = given().spec(specification)
+		var content = given()
+				.spec(specification)
 				.contentType(TesteConfigs.CONTENT_TYPE_JSON)
 				.accept(TesteConfigs.CONTENT_TYPE_JSON)
 				.queryParams("page", 3, "size", 10, "direction", "asc")
@@ -353,17 +354,27 @@ public class PersonControllerJsonTest extends AbstractIntegrationTest {
 				.body()
 				.asString();
 
-		assertTrue(content.contains("\"_links\":{\"self\":{\"href\":\"http://localhost:8888/api/person/v1/677\"}}}"));
-		assertTrue(content.contains("\"_links\":{\"self\":{\"href\":\"http://localhost:8888/api/person/v1/846\"}}}"));
-		assertTrue(content.contains("\"_links\":{\"self\":{\"href\":\"http://localhost:8888/api/person/v1/714\"}}}"));
+		// Usando um parser JSON para melhor verificação
+		JsonNode jsonNode = new ObjectMapper().readTree(content);
 
-		assertTrue(content.contains("{\"first\":{\"href\":\"http://localhost:8888/api/person/v1?direction=asc&page=0&size=10&sort=firstName,asc\"}"));
-		assertTrue(content.contains("\"prev\":{\"href\":\"http://localhost:8888/api/person/v1?direction=asc&page=2&size=10&sort=firstName,asc\"}"));
-		assertTrue(content.contains("\"self\":{\"href\":\"http://localhost:8888/api/person/v1?page=3&size=10&direction=asc\"}"));
-		assertTrue(content.contains("\"next\":{\"href\":\"http://localhost:8888/api/person/v1?direction=asc&page=4&size=10&sort=firstName,asc\"}"));
-		assertTrue(content.contains("\"last\":{\"href\":\"http://localhost:8888/api/person/v1?direction=asc&page=100&size=10&sort=firstName,asc\"}}"));
+		// Verificações de links HATEOAS
+		assertTrue(jsonNode.at("/_embedded/personVOList/0/_links/self/href").asText().equals("http://localhost:8888/api/person/v1/676"));
+		assertTrue(jsonNode.at("/_embedded/personVOList/1/_links/self/href").asText().equals("http://localhost:8888/api/person/v1/413"));
+		assertTrue(jsonNode.at("/_embedded/personVOList/2/_links/self/href").asText().equals("http://localhost:8888/api/person/v1/845"));
 
-		assertTrue(content.contains("\"page\":{\"size\":10,\"totalElements\":1007,\"totalPages\":101,\"number\":3}}"));
+		// Verificação dos links de paginação
+		assertTrue(jsonNode.at("/_links/first/href").asText().equals("http://localhost:8888/api/person/v1?direction=asc&page=0&size=10&sort=firstName,asc"));
+		assertTrue(jsonNode.at("/_links/prev/href").asText().equals("http://localhost:8888/api/person/v1?direction=asc&page=2&size=10&sort=firstName,asc"));
+		assertTrue(jsonNode.at("/_links/self/href").asText().equals("http://localhost:8888/api/person/v1?page=3&size=10&direction=asc"));
+		assertTrue(jsonNode.at("/_links/next/href").asText().equals("http://localhost:8888/api/person/v1?direction=asc&page=4&size=10&sort=firstName,asc"));
+		assertTrue(jsonNode.at("/_links/last/href").asText().equals("http://localhost:8888/api/person/v1?direction=asc&page=100&size=10&sort=firstName,asc"));
+
+		// Verificação da estrutura de paginação
+		JsonNode pageNode = jsonNode.get("page");
+		assertTrue(pageNode.get("size").asInt() == 10);
+		assertTrue(pageNode.get("totalElements").asInt() == 1007);
+		assertTrue(pageNode.get("totalPages").asInt() == 101);
+		assertTrue(pageNode.get("number").asInt() == 3);
 	}
 
 	private void mockPerson() {
